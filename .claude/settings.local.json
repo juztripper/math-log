@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "WebFetch(domain:mat.absolutamente.net)",
+      "mcp__notion__notion-search",
+      "mcp__notion__notion-fetch",
+      "WebFetch(domain:pedronoia.pt)",
+      "WebFetch(domain:www.matematica.pt)",
+      "WebFetch(domain:pedronoia.net)",
+      "WebSearch",
+      "mcp__notion__notion-update-page",
+      "WebFetch(domain:matematicaparatodos.pt)",
+      "Bash(curl:*)"
+    ]
+  }
+}
