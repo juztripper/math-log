@@ -23,6 +23,15 @@ O principal objetivo é criar uma base para os teus colegas (entre 15 a 17 anos)
 - Consulta exclusivamente as fontes fornecidas em FONTES.md;
 - Tem sempre atenção ao design/apresentação das páginas, para que estas sejam coerentes e uniformes com as previamente criadas.
 
+## Memória Persistente
+
+Utiliza o ficheiro `MEMORY.md` (em `.claude/projects/.../memory/MEMORY.md`) como base de conhecimento persistente entre sessões:
+
+- **Antes de criar conteúdo**: consulta o MEMORY.md para seguir os padrões de estilo, evitar erros já documentados e usar os IDs/propriedades corretos;
+- **Durante o trabalho**: se encontrares um erro, um padrão rejeitado pelo user, ou uma abordagem que correu mal, regista-o imediatamente no MEMORY.md para que sessões futuras não repitam o mesmo erro;
+- **Após edições do user**: analisa as diferenças entre o conteúdo original e o editado, e extrai lições de estilo/tom/formatação para o MEMORY.md;
+- O objetivo é que cada sessão seja mais eficiente que a anterior, eliminando tentativa-e-erro.
+
 ## Adicional
 
 Sempre que tiveres qualquer incerteza, esta deve ser comunicada e questionada.

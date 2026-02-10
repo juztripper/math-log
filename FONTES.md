@@ -1,10 +1,26 @@
 # FONTES.md
 
-As fontes abaixo mencionadas, devem ser a única fonte de conhecimento/consulta neste projeto. As suas subpáginas estarão automáticamente incluindas.
+As fontes abaixo mencionadas devem ser a única fonte de conhecimento/consulta neste projeto.
 
 ---
 
-## Fontes e Utilização
+## Hierarquia de Fontes
+
+O projeto segue a seguinte ordem de prioridade para consulta de fontes:
+
+1. **Links Online** (Fontes Principais)
+    - As fontes online listadas abaixo são a base principal de conhecimento
+    - Todo o conteúdo criado deve ter como base estas fontes
+
+2. **PDFs na pasta `/fontes`** (Checklist Final)
+    - Se existirem PDFs na pasta `fontes/`, estes servem como verificação final
+    - Utilizar para confirmar que foi incluído tudo o necessário
+    - Validar que os termos e conceitos utilizados estão corretos
+    - Garantir que não foram adicionadas informações desnecessárias
+
+---
+
+## Fontes Online e Utilização
 
 - <https://matematicaparatodos.pt/Exerc%C3%ADcios-Matem%C3%A1tica-A.html> (FONTE RECOMENDADA)
 Conteúdos de Exercícios MUITO ÚTEIS. Deves rever os termos e fórmulas utilizadas nos exercícios (em PDF) porque é precisamente nessa base que o conteúdo das páginas deve ser criado.
