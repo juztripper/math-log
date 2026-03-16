@@ -1166,6 +1166,641 @@ body {
   display: inline;
 }
 
+/* ─── Cookie Consent Banner ─────────────────────── */
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: rgba(28, 27, 24, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(183, 134, 40, 0.2);
+  animation: fadeUp 0.4s ease-out;
+}
+
+.cookie-banner-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.cookie-banner-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: rgba(248, 247, 243, 0.85);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cookie-banner-text a {
+  color: var(--gold-light);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cookie-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cookie-btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.cookie-btn-reject {
+  background: transparent;
+  color: rgba(248, 247, 243, 0.6);
+  border: 1px solid rgba(248, 247, 243, 0.15);
+}
+
+.cookie-btn-reject:hover {
+  background: rgba(248, 247, 243, 0.08);
+  color: rgba(248, 247, 243, 0.9);
+}
+
+.cookie-btn-accept {
+  background: var(--gold);
+  color: white;
+}
+
+.cookie-btn-accept:hover {
+  background: var(--gold-dark);
+}
+
+/* ─── Legal Pages (Privacy) ────────────────────── */
+.legal-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 2rem 5rem;
+}
+
+.legal-title {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 2.25rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.25rem;
+}
+
+.legal-updated {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  margin-bottom: 2.5rem;
+}
+
+.legal-section {
+  margin-bottom: 2rem;
+}
+
+.legal-section h2 {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.legal-section p {
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--ink-light);
+  margin-bottom: 0.75rem;
+}
+
+.legal-section ul {
+  margin: 0.5rem 0 1rem 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.legal-section ul li {
+  position: relative;
+  padding-left: 1rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.92rem;
+  color: var(--ink-light);
+  line-height: 1.7;
+}
+
+.legal-section ul li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.legal-table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.legal-table th {
+  background: var(--parchment);
+  font-weight: 700;
+  text-align: left;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 2px solid var(--border);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-light);
+}
+
+.legal-table td {
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--ink-light);
+}
+
+.legal-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── Footer Links ─────────────────────────────── */
+.footer-links {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.footer-links a {
+  color: var(--ink-faint);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--gold);
+}
+
+/* ─── Admin Dashboard ──────────────────────────── */
+.admin-login {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 380px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+
+.admin-login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin-login-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 3px rgba(183, 134, 40, 0.12);
+}
+
+.admin-login-title {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.admin-login-sub {
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  margin-bottom: 1.5rem;
+}
+
+.admin-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--cream);
+  color: var(--ink);
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.admin-input:focus {
+  border-color: var(--gold);
+}
+
+.admin-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.admin-btn {
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.admin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-btn-primary {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.admin-btn-primary:hover:not(:disabled) {
+  background: #333;
+}
+
+.admin-btn-secondary {
+  background: var(--parchment);
+  color: var(--ink);
+}
+
+.admin-btn-secondary:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.admin-btn-ghost {
+  background: transparent;
+  color: var(--ink-faint);
+}
+
+.admin-btn-ghost:hover {
+  color: var(--ink);
+  background: var(--parchment);
+}
+
+.admin-btn-sync {
+  background: var(--gold);
+  color: white;
+  padding: 0.65rem 1.75rem;
+}
+
+.admin-btn-sync:hover:not(:disabled) {
+  background: var(--gold-dark);
+}
+
+.admin-error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+
+.admin-success {
+  color: #059669;
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+
+/* Dashboard layout */
+.admin-header {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 60px;
+  z-index: 80;
+}
+
+.admin-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-logo-link {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.025em;
+}
+
+.admin-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold-dark);
+  background: var(--gold-light);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: var(--cream);
+  color: var(--ink);
+  cursor: pointer;
+  outline: none;
+}
+
+.admin-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
+}
+
+/* Sync panel */
+.admin-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-panel-title {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.admin-sync-panel {
+  border-left: 4px solid var(--gold);
+}
+
+.admin-sync-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.admin-sync-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.admin-sync-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.admin-sync-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* Cards */
+.admin-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.admin-card-number {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.admin-card-label {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Chart header + toggle */
+.admin-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.admin-chart-header .admin-panel-title {
+  margin-bottom: 0;
+}
+
+.admin-toggle {
+  display: flex;
+  background: var(--parchment);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.admin-toggle-btn {
+  padding: 0.3rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-faint);
+  transition: all 0.2s;
+}
+
+.admin-toggle-btn.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.admin-toggle-btn:hover:not(.active) {
+  color: var(--ink-light);
+}
+
+/* Chart */
+.admin-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 180px;
+  padding-top: 1.5rem;
+}
+
+.admin-chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+
+.admin-chart-count {
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  min-height: 1em;
+}
+
+.admin-chart-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.admin-chart-bar {
+  width: 100%;
+  background: var(--gold);
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  transition: height 0.3s ease;
+}
+
+.admin-chart-date {
+  font-size: 0.55rem;
+  color: var(--ink-faint);
+  margin-top: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Grid for table panels */
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+/* Bar list (horizontal bars in panels) */
+.admin-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-bar-label {
+  font-size: 0.82rem;
+  color: var(--ink);
+  min-width: 0;
+  flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--parchment);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.admin-bar-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 2px;
+}
+
+.admin-bar-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-light);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.admin-empty {
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
 /* ─── Responsive ────────────────────────────────── */
 @media (max-width: 640px) {
   .header-inner {
@@ -1275,5 +1910,64 @@ body {
 
   .subtema-pages {
     grid-template-columns: 1fr;
+  }
+
+  /* Cookie banner mobile */
+  .cookie-banner-inner {
+    flex-direction: column;
+    padding: 1rem 1.25rem;
+    gap: 1rem;
+  }
+
+  .cookie-banner-text {
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  /* Admin mobile */
+  .admin-header {
+    top: 56px;
+    padding: 0 1rem;
+    height: 48px;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .admin-header-right {
+    gap: 0.35rem;
+  }
+
+  .admin-content {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .admin-sync-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .admin-sync-action {
+    align-items: stretch;
+  }
+
+  .admin-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-chart {
+    height: 140px;
+    overflow-x: auto;
+  }
+
+  .admin-chart-date {
+    display: none;
+  }
+
+  .legal-page {
+    padding: 2rem 1.25rem 4rem;
   }
 }

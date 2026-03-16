@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
+import CookieConsent from "@/components/CookieConsent";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -41,7 +43,12 @@ export default function RootLayout({
               Aprendizagens Essenciais
             </a>
           </p>
+          <p className="footer-links">
+            <a href="/privacidade">Privacidade</a>
+          </p>
         </footer>
+        <CookieConsent />
+        <AnalyticsTracker />
       </body>
     </html>
   );

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
+import { timingSafeEqual } from "crypto";
 import cacheData from "@/data/cache.json";
 
 export const dynamic = "force-dynamic";
+
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 async function getLastEditedTime(
   notion: Client,
@@ -23,7 +29,11 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (
+    !cronSecret ||
+    !authHeader ||
+    !safeCompare(authHeader, `Bearer ${cronSecret}`)
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -84,9 +94,10 @@ export async function GET(request: NextRequest) {
       lastSync,
       lastEdited: lastEditedMax,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("Cron check failed:", err);
     return NextResponse.json(
-      { error: err.message || "Cron check failed" },
+      { error: "Cron check failed" },
       { status: 500 }
     );
   }

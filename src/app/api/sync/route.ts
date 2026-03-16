@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncFromNotion } from "@/lib/sync";
+import { timingSafeEqual } from "crypto";
 
 export const dynamic = "force-dynamic";
 
 // Rate limiting: track last sync time to prevent spam
 let lastSyncTime = 0;
 const MIN_INTERVAL_MS = 60_000; // 1 minute between syncs
+
+function safeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 function getAuthToken(request: NextRequest): string | null {
   const auth = request.headers.get("authorization");
@@ -18,13 +24,13 @@ export async function POST(request: NextRequest) {
 
   if (!secret) {
     return NextResponse.json(
-      { error: "SYNC_SECRET not configured" },
+      { error: "Server misconfigured" },
       { status: 500 }
     );
   }
 
   const token = getAuthToken(request);
-  if (!token || token !== secret) {
+  if (!token || !safeCompare(token, secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -53,9 +59,10 @@ export async function POST(request: NextRequest) {
         total,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("Sync failed:", err);
     return NextResponse.json(
-      { error: err.message || "Sync failed" },
+      { error: "Sync failed" },
       { status: 500 }
     );
   }

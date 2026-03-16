@@ -5,3 +5,4 @@ out/
 .vercel
 .claude/
 tsconfig.tsbuildinfo
+src/data/analytics.json

@@ -1,5 +1,34 @@
 import katex from "katex";
 
+function escapeAttr(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function safeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (["http:", "https:", "mailto:"].includes(parsed.protocol)) {
+      return escapeAttr(url);
+    }
+    return "";
+  } catch {
+    // Relative URLs are fine
+    if (url.startsWith("/")) return escapeAttr(url);
+    return "";
+  }
+}
+
+const VALID_COLORS = new Set([
+  "default", "gray", "brown", "orange", "yellow", "green", "blue", "purple",
+  "pink", "red", "gray_background", "brown_background", "orange_background",
+  "yellow_background", "green_background", "blue_background", "purple_background",
+  "pink_background", "red_background",
+]);
+
 function renderRichText(richText: any[]): string {
   if (!richText) return "";
   return richText
@@ -11,7 +40,7 @@ function renderRichText(richText: any[]): string {
             displayMode: false,
           });
         } catch {
-          return `<code>${rt.equation.expression}</code>`;
+          return `<code>${escapeHtml(rt.equation.expression)}</code>`;
         }
       }
 
@@ -27,12 +56,15 @@ function renderRichText(richText: any[]): string {
       if (ann.italic) text = `<em>${text}</em>`;
       if (ann.strikethrough) text = `<s>${text}</s>`;
       if (ann.underline) text = `<u>${text}</u>`;
-      if (ann.color && ann.color !== "default") {
+      if (ann.color && ann.color !== "default" && VALID_COLORS.has(ann.color)) {
         text = `<span class="notion-color-${ann.color}">${text}</span>`;
       }
 
       if (rt.href) {
-        text = `<a href="${rt.href}" target="_blank" rel="noopener noreferrer" class="notion-link">${text}</a>`;
+        const href = safeUrl(rt.href);
+        if (href) {
+          text = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="notion-link">${text}</a>`;
+        }
       }
 
       return text;
@@ -52,19 +84,19 @@ function renderBlock(block: any, index: number): string {
 
     case "heading_1": {
       const text = renderRichText(block.heading_1.rich_text);
-      const id = text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-");
+      const id = escapeAttr(text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
       return `<h1 id="${id}" class="notion-h1">${text}</h1>`;
     }
 
     case "heading_2": {
       const text = renderRichText(block.heading_2.rich_text);
-      const id = text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-");
+      const id = escapeAttr(text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
       return `<h2 id="${id}" class="notion-h2">${text}</h2>`;
     }
 
     case "heading_3": {
       const text = renderRichText(block.heading_3.rich_text);
-      const id = text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-");
+      const id = escapeAttr(text.replace(/<[^>]*>/g, "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
       return `<h3 id="${id}" class="notion-h3">${text}</h3>`;
     }
 
@@ -111,7 +143,7 @@ function renderBlock(block: any, index: number): string {
         });
         return `<div class="notion-equation">${html}</div>`;
       } catch {
-        return `<pre class="notion-equation-fallback">${block.equation.expression}</pre>`;
+        return `<pre class="notion-equation-fallback">${escapeHtml(block.equation.expression)}</pre>`;
       }
     }
 
@@ -126,7 +158,9 @@ function renderBlock(block: any, index: number): string {
       const caption = block.image.caption
         ? renderRichText(block.image.caption)
         : "";
-      return `<figure class="notion-image"><img src="${url}" alt="${caption.replace(/<[^>]*>/g, "")}" loading="lazy" />${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
+      const safeImgUrl = safeUrl(url);
+      const altText = escapeAttr(caption.replace(/<[^>]*>/g, ""));
+      return `<figure class="notion-image"><img src="${safeImgUrl}" alt="${altText}" loading="lazy" />${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
     }
 
     case "table": {
@@ -174,13 +208,14 @@ function renderBlock(block: any, index: number): string {
 
     case "code": {
       const text = renderRichText(block.code.rich_text);
-      const lang = block.code.language || "";
+      const lang = escapeAttr(block.code.language || "");
       return `<pre class="notion-code" data-language="${lang}"><code>${text}</code></pre>`;
     }
 
     case "bookmark": {
       const url = block.bookmark.url || "";
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="notion-bookmark">${url}</a>`;
+      const safeBookmark = safeUrl(url);
+      return `<a href="${safeBookmark}" target="_blank" rel="noopener noreferrer" class="notion-bookmark">${escapeHtml(url)}</a>`;
     }
 
     default:
