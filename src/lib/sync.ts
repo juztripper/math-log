@@ -1,8 +1,6 @@
 import { Client } from "@notionhq/client";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import crypto from "crypto";
-import { put, list } from "@vercel/blob";
 
 const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
 
@@ -62,62 +60,6 @@ function getIcon(page: any): string {
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Cache of existing blob paths to avoid re-uploading
-let blobCache: Map<string, string> | null = null;
-
-async function loadBlobCache(): Promise<Map<string, string>> {
-  if (blobCache) return blobCache;
-  blobCache = new Map();
-  let cursor: string | undefined;
-  do {
-    const result = await list({ prefix: "notion/", cursor, limit: 1000 });
-    for (const blob of result.blobs) {
-      const name = blob.pathname.replace("notion/", "");
-      blobCache.set(name, blob.url);
-    }
-    cursor = result.hasMore ? result.cursor : undefined;
-  } while (cursor);
-  return blobCache;
-}
-
-async function downloadImage(url: string): Promise<string> {
-  const hash = crypto.createHash("md5").update(url.split("?")[0]).digest("hex");
-  const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
-  const filename = `${hash}${ext}`;
-
-  // Check if already uploaded to Vercel Blob
-  const cache = await loadBlobCache();
-  const existing = cache.get(filename);
-  if (existing) return existing;
-
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.warn(`  Failed to download image: ${res.status} ${url.slice(0, 80)}...`);
-    return url;
-  }
-
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const blob = await put(`notion/${filename}`, buffer, {
-    access: "public",
-    addRandomSuffix: false,
-  });
-
-  cache.set(filename, blob.url);
-  return blob.url;
-}
-
-async function downloadBlockImages(blocks: any[]): Promise<void> {
-  for (const block of blocks) {
-    if (block.type === "image" && block.image?.type === "file") {
-      const originalUrl = block.image.file.url;
-      block.image.file.url = await downloadImage(originalUrl);
-    }
-    if (block.children?.length) {
-      await downloadBlockImages(block.children);
-    }
-  }
 }
 
 async function fetchBlocks(notion: Client, blockId: string): Promise<any[]> {
@@ -214,24 +156,14 @@ async function fetchDatabasePages(
 }
 
 export interface SyncProgress {
-  phase: "listing" | "blocks" | "images" | "saving" | "done" | "error";
+  phase: "listing" | "blocks" | "saving" | "done" | "error";
   message: string;
   current?: number;
   total?: number;
   pageTitle?: string;
-  imagesDownloaded?: number;
 }
 
 type ProgressCallback = (progress: SyncProgress) => void;
-
-function countImages(blocks: any[]): number {
-  let count = 0;
-  for (const block of blocks) {
-    if (block.type === "image" && block.image?.type === "file") count++;
-    if (block.children?.length) count += countImages(block.children);
-  }
-  return count;
-}
 
 export async function syncFromNotion(
   onProgress?: ProgressCallback
@@ -266,12 +198,8 @@ export async function syncFromNotion(
     total: allPages.length,
   });
 
-  // Reset blob cache for fresh sync
-  blobCache = null;
-
   const cached10: CachedPage[] = [];
   const cached11: CachedPage[] = [];
-  let totalImages = 0;
 
   for (let i = 0; i < allPages.length; i++) {
     const page = allPages[i];
@@ -285,19 +213,6 @@ export async function syncFromNotion(
 
     await sleep(400);
     const blocks = await fetchBlocks(notion, page.id);
-
-    const imgCount = countImages(blocks);
-    if (imgCount > 0) {
-      emit({
-        phase: "images",
-        message: `A descarregar ${imgCount} imagem(ns) de "${page.title}"`,
-        current: i + 1,
-        total: allPages.length,
-        pageTitle: page.title,
-      });
-      await downloadBlockImages(blocks);
-      totalImages += imgCount;
-    }
 
     const { dbKey, ...rest } = page;
     const cachedPage: CachedPage = { ...rest, blocks };
@@ -323,8 +238,7 @@ export async function syncFromNotion(
 
   emit({
     phase: "done",
-    message: `Concluído: ${cached10.length} págs (10.º) + ${cached11.length} págs (11.º), ${totalImages} imagens`,
-    imagesDownloaded: totalImages,
+    message: `Concluído: ${cached10.length} págs (10.º) + ${cached11.length} págs (11.º)`,
   });
 
   return cache;

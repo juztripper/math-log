@@ -153,12 +153,12 @@ function renderBlock(block: any, index: number): string {
     case "image": {
       const url =
         block.image.type === "file"
-          ? block.image.file.url
+          ? `/api/img/${block.id}`
           : block.image.external?.url || "";
       const caption = block.image.caption
         ? renderRichText(block.image.caption)
         : "";
-      const safeImgUrl = safeUrl(url);
+      const safeImgUrl = block.image.type === "file" ? escapeAttr(url) : safeUrl(url);
       const altText = escapeAttr(caption.replace(/<[^>]*>/g, ""));
       return `<figure class="notion-image"><img src="${safeImgUrl}" alt="${altText}" loading="lazy" />${caption ? `<figcaption>${caption}</figcaption>` : ""}</figure>`;
     }

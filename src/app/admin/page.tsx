@@ -279,14 +279,6 @@ export default function AdminPage() {
               setSyncCurrent(evt.current || 0);
               setSyncTotal(evt.total || 0);
               setSyncPageTitle(evt.pageTitle || "");
-            } else if (evt.phase === "images") {
-              setSyncPhase("images");
-              setSyncPageTitle(evt.pageTitle || "");
-              setSyncLogs((prev) => {
-                const msg = evt.message;
-                if (prev[prev.length - 1] !== msg) return [...prev, msg];
-                return prev;
-              });
             } else if (evt.phase === "saving") {
               setSyncPhase("saving");
               setSyncPageTitle("");
@@ -438,11 +430,11 @@ export default function AdminPage() {
                   { key: "blocks", label: "Obter conteúdo" },
                   { key: "saving", label: "Guardar" },
                 ].map((step, i) => {
-                  const phases = ["listing", "blocks", "images", "saving", "done"];
+                  const phases = ["listing", "blocks", "saving", "done"];
                   const currentIdx = phases.indexOf(syncPhase);
                   const stepIdx = phases.indexOf(step.key);
-                  const isActive = step.key === syncPhase || (step.key === "blocks" && syncPhase === "images");
-                  const isDone = currentIdx > stepIdx && !(step.key === "blocks" && syncPhase === "images");
+                  const isActive = step.key === syncPhase;
+                  const isDone = currentIdx > stepIdx;
                   return (
                     <div
                       key={step.key}
@@ -464,7 +456,7 @@ export default function AdminPage() {
               </div>
 
               {/* Progress bar */}
-              {syncTotal > 0 && (syncPhase === "blocks" || syncPhase === "images") && (
+              {syncTotal > 0 && syncPhase === "blocks" && (
                 <div className="admin-sync-bar-section">
                   <div className="admin-sync-bar-header">
                     <span className="admin-sync-bar-text">
@@ -508,7 +500,7 @@ export default function AdminPage() {
               {/* Time + estimate */}
               <div className="admin-sync-time-row">
                 <span>Tempo decorrido: {formatElapsed(syncElapsed)}</span>
-                {syncCurrent > 1 && syncTotal > 0 && (syncPhase === "blocks" || syncPhase === "images") && (
+                {syncCurrent > 1 && syncTotal > 0 && syncPhase === "blocks" && (
                   <span>
                     Estimativa restante: {formatElapsed(
                       Math.round(
