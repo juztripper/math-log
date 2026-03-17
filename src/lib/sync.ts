@@ -4,7 +4,7 @@ import path from "path";
 import crypto from "crypto";
 
 const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
-const IMAGES_DIR = path.join(process.cwd(), "public", "images", "notion");
+const IMAGES_DIR = path.join("/tmp", "images", "notion");
 
 interface CachedPage {
   id: string;
@@ -71,7 +71,7 @@ async function downloadImage(url: string): Promise<string> {
   const localPath = path.join(IMAGES_DIR, filename);
 
   if (existsSync(localPath)) {
-    return `/images/notion/${filename}`;
+    return `/api/images/${filename}`;
   }
 
   const res = await fetch(url);
@@ -82,7 +82,7 @@ async function downloadImage(url: string): Promise<string> {
 
   const buffer = Buffer.from(await res.arrayBuffer());
   writeFileSync(localPath, buffer);
-  return `/images/notion/${filename}`;
+  return `/api/images/${filename}`;
 }
 
 async function downloadBlockImages(blocks: any[]): Promise<void> {
