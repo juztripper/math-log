@@ -41,7 +41,7 @@ export default function ThemeAccordion({
   themes,
   anoSlug,
 }: ThemeAccordionProps) {
-  const [openIndex, setOpenIndex] = useState<number>(0);
+  const [openIndex, setOpenIndex] = useState<number>(-1);
   const cardRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   // On mount, open the theme matching the URL hash and scroll to it
@@ -51,7 +51,7 @@ export default function ThemeAccordion({
       const idx = themes.findIndex(
         (t) => `tema-${slugifyTheme(t.name)}` === hash.slice(1)
       );
-      if (idx !== -1 && idx !== 0) {
+      if (idx !== -1) {
         setOpenIndex(idx);
         requestAnimationFrame(() => {
           const el = cardRefs.current.get(idx);
@@ -68,40 +68,8 @@ export default function ThemeAccordion({
     setOpenIndex((prev) => (prev === index ? -1 : index));
   }, []);
 
-  const scrollToAndOpen = useCallback((index: number) => {
-    setOpenIndex(index);
-    requestAnimationFrame(() => {
-      const el = cardRefs.current.get(index);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-  }, []);
-
   return (
     <>
-      {/* Quick-nav pills */}
-      <nav className="theme-nav">
-        {themes.map((theme, index) => (
-          <button
-            key={theme.name}
-            className={`theme-nav-pill ${openIndex === index ? "theme-nav-pill-active" : ""}`}
-            style={
-              {
-                "--pill-color": theme.color,
-                borderColor: openIndex === index ? theme.color : `${theme.color}40`,
-                color: theme.color,
-                background: openIndex === index ? `${theme.color}12` : "transparent",
-              } as React.CSSProperties
-            }
-            onClick={() => scrollToAndOpen(index)}
-          >
-            <span className="theme-nav-icon">{theme.icon}</span>
-            {theme.name}
-          </button>
-        ))}
-      </nav>
-
       {/* Theme cards */}
       <div className="theme-accordion">
         {themes.map((theme, index) => {
