@@ -127,15 +127,21 @@ export async function GET(request: NextRequest) {
       ? sessionTimes.reduce((a, b) => a + b, 0) / sessionTimes.length
       : 0;
 
-  // Read cache.json for lastSync
+  // Read cache.json for lastSync (prefer runtime cache from /tmp/)
   let lastSync: string | null = null;
-  try {
-    const cachePath = path.join(process.cwd(), "src", "data", "cache.json");
-    const raw = fs.readFileSync(cachePath, "utf-8");
-    const cache = JSON.parse(raw);
-    lastSync = cache.lastSync || null;
-  } catch {
-    // ignore
+  for (const cp of [
+    path.join("/tmp", "cache.json"),
+    path.join(process.cwd(), "src", "data", "cache.json"),
+  ]) {
+    try {
+      if (!fs.existsSync(cp)) continue;
+      const raw = fs.readFileSync(cp, "utf-8");
+      const cache = JSON.parse(raw);
+      lastSync = cache.lastSync || null;
+      break;
+    } catch {
+      continue;
+    }
   }
 
   const sortDesc = (

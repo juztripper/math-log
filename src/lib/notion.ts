@@ -10,7 +10,8 @@ import {
 } from "./types";
 import type { CacheData } from "./sync";
 
-const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
+const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
+const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
 
 export function slugify(text: string): string {
   return text
@@ -22,15 +23,19 @@ export function slugify(text: string): string {
 }
 
 // ─── Read from cache ──────────────────────────────
+// Prefer runtime cache (/tmp/, written by admin sync) over bundled cache
 
 function readCache(): CacheData | null {
-  if (!existsSync(CACHE_PATH)) return null;
-  try {
-    const raw = readFileSync(CACHE_PATH, "utf-8");
-    return JSON.parse(raw) as CacheData;
-  } catch {
-    return null;
+  for (const cachePath of [RUNTIME_CACHE_PATH, BUNDLED_CACHE_PATH]) {
+    if (!existsSync(cachePath)) continue;
+    try {
+      const raw = readFileSync(cachePath, "utf-8");
+      return JSON.parse(raw) as CacheData;
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 export function fetchDatabasePages(dbKey: "10" | "11"): ContentPage[] {

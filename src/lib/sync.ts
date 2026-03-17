@@ -2,7 +2,12 @@ import { Client } from "@notionhq/client";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 
-const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
+const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
+const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
+
+// On Vercel, write to /tmp/ (writable). Locally, write to src/data/.
+const isVercel = !!process.env.VERCEL;
+const CACHE_PATH = isVercel ? RUNTIME_CACHE_PATH : BUNDLED_CACHE_PATH;
 
 interface CachedPage {
   id: string;
