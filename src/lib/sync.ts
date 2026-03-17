@@ -1,8 +1,10 @@
 import { Client } from "@notionhq/client";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
+import crypto from "crypto";
 
 const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
+const IMAGES_DIR = path.join(process.cwd(), "public", "images", "notion");
 
 interface CachedPage {
   id: string;
@@ -60,6 +62,39 @@ function getIcon(page: any): string {
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function downloadImage(url: string): Promise<string> {
+  const hash = crypto.createHash("md5").update(url.split("?")[0]).digest("hex");
+  const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
+  const filename = `${hash}${ext}`;
+  const localPath = path.join(IMAGES_DIR, filename);
+
+  if (existsSync(localPath)) {
+    return `/images/notion/${filename}`;
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.warn(`  Failed to download image: ${res.status} ${url.slice(0, 80)}...`);
+    return url; // fallback to original URL
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  writeFileSync(localPath, buffer);
+  return `/images/notion/${filename}`;
+}
+
+async function downloadBlockImages(blocks: any[]): Promise<void> {
+  for (const block of blocks) {
+    if (block.type === "image" && block.image?.type === "file") {
+      const originalUrl = block.image.file.url;
+      block.image.file.url = await downloadImage(originalUrl);
+    }
+    if (block.children?.length) {
+      await downloadBlockImages(block.children);
+    }
+  }
 }
 
 async function fetchBlocks(notion: Client, blockId: string): Promise<any[]> {
@@ -155,7 +190,30 @@ async function fetchDatabasePages(
   return pages;
 }
 
-export async function syncFromNotion(): Promise<CacheData> {
+export interface SyncProgress {
+  phase: "listing" | "blocks" | "images" | "saving" | "done" | "error";
+  message: string;
+  current?: number;
+  total?: number;
+  pageTitle?: string;
+  imagesDownloaded?: number;
+}
+
+type ProgressCallback = (progress: SyncProgress) => void;
+
+function countImages(blocks: any[]): number {
+  let count = 0;
+  for (const block of blocks) {
+    if (block.type === "image" && block.image?.type === "file") count++;
+    if (block.children?.length) count += countImages(block.children);
+  }
+  return count;
+}
+
+export async function syncFromNotion(
+  onProgress?: ProgressCallback
+): Promise<CacheData> {
+  const emit = onProgress ?? (() => {});
   const token = process.env.NOTION_TOKEN;
   const db10 = process.env.NOTION_DB_10;
   const db11 = process.env.NOTION_DB_11;
@@ -166,36 +224,66 @@ export async function syncFromNotion(): Promise<CacheData> {
 
   const notion = new Client({ auth: token });
 
-  console.log("Syncing 10º Ano...");
+  emit({ phase: "listing", message: "A obter lista de páginas do 10.º ano..." });
   const pages10 = await fetchDatabasePages(notion, db10);
-  console.log(`  Found ${pages10.length} pages`);
 
   await sleep(1000);
 
-  console.log("Syncing 11º Ano...");
+  emit({ phase: "listing", message: "A obter lista de páginas do 11.º ano..." });
   const pages11 = await fetchDatabasePages(notion, db11);
-  console.log(`  Found ${pages11.length} pages`);
 
-  // Fetch blocks for each page
   const allPages = [
     ...pages10.map((p) => ({ ...p, dbKey: "10" as const })),
     ...pages11.map((p) => ({ ...p, dbKey: "11" as const })),
   ];
 
+  emit({
+    phase: "listing",
+    message: `Encontradas ${pages10.length} + ${pages11.length} páginas`,
+    total: allPages.length,
+  });
+
+  // Ensure images directory exists
+  if (!existsSync(IMAGES_DIR)) mkdirSync(IMAGES_DIR, { recursive: true });
+
   const cached10: CachedPage[] = [];
   const cached11: CachedPage[] = [];
+  let totalImages = 0;
 
   for (let i = 0; i < allPages.length; i++) {
     const page = allPages[i];
-    console.log(`  [${i + 1}/${allPages.length}] ${page.title}`);
+    emit({
+      phase: "blocks",
+      message: `A obter conteúdo: ${page.title}`,
+      current: i + 1,
+      total: allPages.length,
+      pageTitle: page.title,
+    });
+
     await sleep(400);
     const blocks = await fetchBlocks(notion, page.id);
+
+    const imgCount = countImages(blocks);
+    if (imgCount > 0) {
+      emit({
+        phase: "images",
+        message: `A descarregar ${imgCount} imagem(ns) de "${page.title}"`,
+        current: i + 1,
+        total: allPages.length,
+        pageTitle: page.title,
+      });
+      await downloadBlockImages(blocks);
+      totalImages += imgCount;
+    }
+
     const { dbKey, ...rest } = page;
     const cachedPage: CachedPage = { ...rest, blocks };
 
     if (dbKey === "10") cached10.push(cachedPage);
     else cached11.push(cachedPage);
   }
+
+  emit({ phase: "saving", message: "A guardar cache..." });
 
   const cache: CacheData = {
     lastSync: new Date().toISOString(),
@@ -205,13 +293,16 @@ export async function syncFromNotion(): Promise<CacheData> {
     },
   };
 
-  // Ensure directory exists
   const dir = path.dirname(CACHE_PATH);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
   writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
-  console.log(`Cache written to ${CACHE_PATH}`);
-  console.log(`Last sync: ${cache.lastSync}`);
+
+  emit({
+    phase: "done",
+    message: `Concluído: ${cached10.length} págs (10.º) + ${cached11.length} págs (11.º), ${totalImages} imagens`,
+    imagesDownloaded: totalImages,
+  });
 
   return cache;
 }

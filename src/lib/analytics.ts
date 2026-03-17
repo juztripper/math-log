@@ -12,6 +12,7 @@ export interface AnalyticsEvent {
   country: string;
   city: string;
   sessionId: string;
+  duration?: number; // seconds spent on this page
 }
 
 interface AnalyticsStore {
@@ -54,6 +55,19 @@ export function recordEvent(event: AnalyticsEvent): void {
   }
   memoryStore = store;
   persistStore(store);
+}
+
+export function updateEventDuration(eventId: string, duration: number): void {
+  const store = loadStore();
+  // Search from the end since recent events are more likely
+  for (let i = store.events.length - 1; i >= Math.max(0, store.events.length - 500); i--) {
+    if (store.events[i].id === eventId) {
+      store.events[i].duration = duration;
+      memoryStore = store;
+      persistStore(store);
+      return;
+    }
+  }
 }
 
 export function getEvents(since?: Date): AnalyticsEvent[] {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordEvent, parseUserAgent, generateId } from "@/lib/analytics";
+import { recordEvent, updateEventDuration, parseUserAgent, generateId } from "@/lib/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +37,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { path: pagePath, referrer, sessionId } = body;
+    const { path: pagePath, referrer, sessionId, duration, eventId } = body;
 
     if (!pagePath || typeof pagePath !== "string") {
       return NextResponse.json({ error: "Missing path" }, { status: 400 });
+    }
+
+    // Duration update for an existing event
+    if (eventId && typeof duration === "number" && duration > 0) {
+      updateEventDuration(
+        typeof eventId === "string" ? eventId.slice(0, 100) : "",
+        Math.min(Math.round(duration), 3600) // cap at 1 hour
+      );
+      return NextResponse.json({ ok: true });
     }
 
     // Sanitize inputs
@@ -58,8 +67,9 @@ export async function POST(request: NextRequest) {
     const city =
       request.headers.get("x-vercel-ip-city") || "Desconhecida";
 
+    const id = generateId();
     recordEvent({
-      id: generateId(),
+      id,
       timestamp: new Date().toISOString(),
       path: safePath,
       referrer: safeReferrer,
@@ -71,7 +81,7 @@ export async function POST(request: NextRequest) {
       sessionId: safeSession,
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, eventId: id });
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

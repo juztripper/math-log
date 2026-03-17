@@ -27,7 +27,7 @@ export default function PrivacidadePage() {
           seguintes dados de forma anónima:
         </p>
         <ul>
-          <li>Páginas visitadas e respetivo percurso de navegação</li>
+          <li>Páginas visitadas, respetivo percurso de navegação e tempo de permanência em cada página</li>
           <li>Tipo de navegador (browser) e sistema operativo</li>
           <li>Tipo de dispositivo (computador, tablet ou telemóvel)</li>
           <li>País e cidade de acesso (obtidos a partir do endereço IP, sem armazenar o IP)</li>

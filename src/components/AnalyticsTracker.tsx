@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
 
 function getSessionId(): string {
@@ -23,25 +23,68 @@ function hasConsent(): boolean {
 export default function AnalyticsTracker() {
   const pathname = usePathname();
   const lastPath = useRef("");
+  const entryTime = useRef(0);
+  const currentEventId = useRef("");
+
+  const sendDuration = useCallback(() => {
+    if (!currentEventId.current || !entryTime.current) return;
+    const duration = Math.round((Date.now() - entryTime.current) / 1000);
+    if (duration < 1) return;
+
+    const body = JSON.stringify({
+      path: lastPath.current,
+      eventId: currentEventId.current,
+      duration,
+      sessionId: getSessionId(),
+    });
+
+    // Use sendBeacon for reliability on page unload
+    if (navigator.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon("/api/analytics/collect", blob);
+    } else {
+      fetch("/api/analytics/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    }
+
+    currentEventId.current = "";
+    entryTime.current = 0;
+  }, []);
 
   useEffect(() => {
-    const send = () => {
+    const send = async () => {
       if (!hasConsent()) return;
       if (pathname === lastPath.current) return;
       if (pathname.startsWith("/admin") || pathname.startsWith("/privacidade"))
         return;
 
-      lastPath.current = pathname;
+      // Send duration for previous page
+      sendDuration();
 
-      fetch("/api/analytics/collect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: pathname,
-          referrer: document.referrer,
-          sessionId: getSessionId(),
-        }),
-      }).catch(() => {});
+      lastPath.current = pathname;
+      entryTime.current = Date.now();
+
+      try {
+        const res = await fetch("/api/analytics/collect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: pathname,
+            referrer: document.referrer,
+            sessionId: getSessionId(),
+          }),
+        });
+        const data = await res.json();
+        if (data.eventId) {
+          currentEventId.current = data.eventId;
+        }
+      } catch {
+        // ignore
+      }
     };
 
     send();
@@ -49,7 +92,24 @@ export default function AnalyticsTracker() {
     const onConsent = () => send();
     window.addEventListener("cookie-consent-changed", onConsent);
     return () => window.removeEventListener("cookie-consent-changed", onConsent);
-  }, [pathname]);
+  }, [pathname, sendDuration]);
+
+  // Send duration on page unload
+  useEffect(() => {
+    const onUnload = () => sendDuration();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        sendDuration();
+      }
+    };
+
+    window.addEventListener("beforeunload", onUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", onUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [sendDuration]);
 
   return null;
 }
