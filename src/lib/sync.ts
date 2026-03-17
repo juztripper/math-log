@@ -2,9 +2,9 @@ import { Client } from "@notionhq/client";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 import crypto from "crypto";
+import { put, list } from "@vercel/blob";
 
 const CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
-const IMAGES_DIR = path.join("/tmp", "images", "notion");
 
 interface CachedPage {
   id: string;
@@ -64,25 +64,48 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Cache of existing blob paths to avoid re-uploading
+let blobCache: Map<string, string> | null = null;
+
+async function loadBlobCache(): Promise<Map<string, string>> {
+  if (blobCache) return blobCache;
+  blobCache = new Map();
+  let cursor: string | undefined;
+  do {
+    const result = await list({ prefix: "notion/", cursor, limit: 1000 });
+    for (const blob of result.blobs) {
+      const name = blob.pathname.replace("notion/", "");
+      blobCache.set(name, blob.url);
+    }
+    cursor = result.hasMore ? result.cursor : undefined;
+  } while (cursor);
+  return blobCache;
+}
+
 async function downloadImage(url: string): Promise<string> {
   const hash = crypto.createHash("md5").update(url.split("?")[0]).digest("hex");
   const ext = path.extname(new URL(url).pathname).split("?")[0] || ".png";
   const filename = `${hash}${ext}`;
-  const localPath = path.join(IMAGES_DIR, filename);
 
-  if (existsSync(localPath)) {
-    return `/api/images/${filename}`;
-  }
+  // Check if already uploaded to Vercel Blob
+  const cache = await loadBlobCache();
+  const existing = cache.get(filename);
+  if (existing) return existing;
 
   const res = await fetch(url);
   if (!res.ok) {
     console.warn(`  Failed to download image: ${res.status} ${url.slice(0, 80)}...`);
-    return url; // fallback to original URL
+    return url;
   }
 
   const buffer = Buffer.from(await res.arrayBuffer());
-  writeFileSync(localPath, buffer);
-  return `/api/images/${filename}`;
+  const blob = await put(`notion/${filename}`, buffer, {
+    access: "public",
+    addRandomSuffix: false,
+  });
+
+  cache.set(filename, blob.url);
+  return blob.url;
 }
 
 async function downloadBlockImages(blocks: any[]): Promise<void> {
@@ -243,8 +266,8 @@ export async function syncFromNotion(
     total: allPages.length,
   });
 
-  // Ensure images directory exists
-  if (!existsSync(IMAGES_DIR)) mkdirSync(IMAGES_DIR, { recursive: true });
+  // Reset blob cache for fresh sync
+  blobCache = null;
 
   const cached10: CachedPage[] = [];
   const cached11: CachedPage[] = [];
