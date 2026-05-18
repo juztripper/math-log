@@ -1,6 +1,5 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
-import { unstable_cache } from "next/cache";
 import { list } from "@vercel/blob";
 import {
   ContentPage,
@@ -17,6 +16,7 @@ const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json")
 const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
 
 const isVercel = !!process.env.VERCEL;
+const MEM_TTL_MS = 30_000;
 
 export const CACHE_TAG = "notion-cache";
 
@@ -51,30 +51,57 @@ async function readFromBlob(): Promise<CacheData | null> {
   try {
     const { blobs } = await list({ prefix: CACHE_BLOB_PATH, limit: 1 });
     const match = blobs.find((b) => b.pathname === CACHE_BLOB_PATH);
-    if (!match) return null;
+    if (!match) {
+      console.warn("[notion] Blob 'cache.json' not found via list()");
+      return null;
+    }
     const res = await fetch(match.url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as CacheData;
+    if (!res.ok) {
+      console.warn(`[notion] Blob fetch returned ${res.status}`);
+      return null;
+    }
+    const data = (await res.json()) as CacheData;
+    console.log(
+      `[notion] Loaded cache from Blob: lastSync=${data.lastSync}, ` +
+        `10=${data.databases["10"]?.length ?? 0}, 11=${data.databases["11"]?.length ?? 0}`
+    );
+    return data;
   } catch (err) {
     console.warn("[notion] Blob fetch failed:", err);
     return null;
   }
 }
 
-const readCacheCached = unstable_cache(
-  async (): Promise<CacheData | null> => {
-    if (isVercel) {
-      const blobData = await readFromBlob();
-      if (blobData) return blobData;
-    }
-    return readFromFilesystem();
-  },
-  ["notion-cache-v1"],
-  { tags: [CACHE_TAG], revalidate: 3600 }
-);
+let memCache: { data: CacheData; ts: number } | null = null;
+let inflight: Promise<CacheData | null> | null = null;
+
+export function invalidateMemoryCache() {
+  memCache = null;
+}
+
+async function loadCacheFresh(): Promise<CacheData | null> {
+  if (isVercel) {
+    const blobData = await readFromBlob();
+    if (blobData) return blobData;
+    console.warn("[notion] Falling back to bundled filesystem cache");
+  }
+  return readFromFilesystem();
+}
 
 async function readCache(): Promise<CacheData | null> {
-  return readCacheCached();
+  if (memCache && Date.now() - memCache.ts < MEM_TTL_MS) {
+    return memCache.data;
+  }
+  if (inflight) return inflight;
+  inflight = loadCacheFresh()
+    .then((data) => {
+      if (data) memCache = { data, ts: Date.now() };
+      return data;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
 
 export async function fetchDatabasePages(

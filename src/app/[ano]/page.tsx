@@ -44,9 +44,7 @@ function buildThemes(pages: ContentPage[]): ThemeGroup[] {
   return themes;
 }
 
-export function generateStaticParams() {
-  return [{ ano: "10-ano" }, { ano: "11-ano" }];
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

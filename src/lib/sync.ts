@@ -248,13 +248,16 @@ export async function syncFromNotion(
 
   if (isVercel) {
     emit({ phase: "saving", message: "A enviar cache para Vercel Blob..." });
-    await put(CACHE_BLOB_PATH, serialized, {
+    const result = await put(CACHE_BLOB_PATH, serialized, {
       access: "public",
       contentType: "application/json",
       addRandomSuffix: false,
       allowOverwrite: true,
       cacheControlMaxAge: 0,
     });
+    console.log(
+      `[sync] Uploaded cache to Blob: ${result.url} (${serialized.length} bytes)`
+    );
   }
 
   emit({

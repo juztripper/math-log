@@ -1,20 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchPageBySlug, getAllSlugs, slugify } from "@/lib/notion";
+import { fetchPageBySlug, slugify } from "@/lib/notion";
 import { SLUG_TO_ANO, ANO_DB, THEME_COLORS } from "@/lib/types";
 import NotionContent from "@/components/NotionRenderer";
 import ContentBar from "@/components/ContentBar";
 
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  try {
-    const slugs = await getAllSlugs();
-    return slugs.map(({ ano, slug }) => ({ ano, slug }));
-  } catch {
-    return [];
-  }
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
