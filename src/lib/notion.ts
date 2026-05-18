@@ -8,8 +8,6 @@ import {
   SubtemaGroup,
   THEME_COLORS,
   ANO_SLUGS,
-  THEME_ORDER,
-  SUBTEMA_ORDER,
 } from "./types";
 import type { CacheData } from "./sync";
 import { CACHE_BLOB_PATH } from "./sync";
@@ -31,24 +29,39 @@ export function slugify(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function indexIn(arr: readonly string[] | undefined, name: string): number {
-  if (!arr) return Number.POSITIVE_INFINITY;
-  const i = arr.indexOf(name);
-  return i === -1 ? Number.POSITIVE_INFINITY : i;
+function minOrdem(pages: Pick<ContentPage, "ordem">[]): number {
+  let min = Number.POSITIVE_INFINITY;
+  for (const p of pages) {
+    const o = p.ordem;
+    if (o != null && o < min) min = o;
+  }
+  return min;
 }
 
-export function compareTema(dbKey: string, a: string, b: string): number {
-  const order = THEME_ORDER[dbKey];
-  const ia = indexIn(order, a);
-  const ib = indexIn(order, b);
-  return ia !== ib ? ia - ib : a.localeCompare(b, "pt");
+export function sortedTemas(
+  themeMap: Map<string, Map<string, Pick<ContentPage, "ordem">[]>>
+): string[] {
+  return Array.from(themeMap.entries())
+    .map(([tema, subMap]) => {
+      const all: Pick<ContentPage, "ordem">[] = [];
+      for (const pages of subMap.values()) all.push(...pages);
+      return { tema, min: minOrdem(all) };
+    })
+    .sort((a, b) =>
+      a.min !== b.min ? a.min - b.min : a.tema.localeCompare(b.tema, "pt")
+    )
+    .map((x) => x.tema);
 }
 
-export function compareSubtema(dbKey: string, a: string, b: string): number {
-  const order = SUBTEMA_ORDER[dbKey];
-  const ia = indexIn(order, a);
-  const ib = indexIn(order, b);
-  return ia !== ib ? ia - ib : a.localeCompare(b, "pt");
+export function sortedSubtemas(
+  subMap: Map<string, Pick<ContentPage, "ordem">[]>
+): string[] {
+  return Array.from(subMap.entries())
+    .map(([subtema, pages]) => ({ subtema, min: minOrdem(pages) }))
+    .sort((a, b) =>
+      a.min !== b.min ? a.min - b.min : a.subtema.localeCompare(b.subtema, "pt")
+    )
+    .map((x) => x.subtema);
 }
 
 // ─── Read from cache ──────────────────────────────
@@ -160,15 +173,9 @@ export async function fetchPageBySlug(
   }
 
   const ordered: typeof pages = [];
-  const orderedTemas = Array.from(themeMap.keys()).sort((a, b) =>
-    compareTema(dbKey, a, b)
-  );
-  for (const tema of orderedTemas) {
+  for (const tema of sortedTemas(themeMap)) {
     const subtemaMap = themeMap.get(tema)!;
-    const orderedSubs = Array.from(subtemaMap.keys()).sort((a, b) =>
-      compareSubtema(dbKey, a, b)
-    );
-    for (const subtema of orderedSubs) {
+    for (const subtema of sortedSubtemas(subtemaMap)) {
       const subPages = subtemaMap.get(subtema)!;
       subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
       ordered.push(...subPages);
@@ -203,17 +210,10 @@ export async function fetchAllYearData(): Promise<YearData[]> {
     fetchDatabasePages("11"),
   ]);
 
-  return [
-    buildYearData("10º Ano", "10", pages10),
-    buildYearData("11º Ano", "11", pages11),
-  ];
+  return [buildYearData("10º Ano", pages10), buildYearData("11º Ano", pages11)];
 }
 
-function buildYearData(
-  ano: string,
-  dbKey: string,
-  pages: ContentPage[]
-): YearData {
+function buildYearData(ano: string, pages: ContentPage[]): YearData {
   const themeMap = new Map<string, Map<string, ContentPage[]>>();
 
   for (const page of pages) {
@@ -226,21 +226,16 @@ function buildYearData(
     subtemaMap.get(subtema)!.push(page);
   }
 
-  const orderedTemas = Array.from(themeMap.keys()).sort((a, b) =>
-    compareTema(dbKey, a, b)
-  );
-
-  const themes: ThemeGroup[] = orderedTemas.map((tema) => {
+  const themes: ThemeGroup[] = sortedTemas(themeMap).map((tema) => {
     const subtemaMap = themeMap.get(tema)!;
-    const orderedSubs = Array.from(subtemaMap.keys()).sort((a, b) =>
-      compareSubtema(dbKey, a, b)
-    );
 
-    const subtemas: SubtemaGroup[] = orderedSubs.map((subtema) => {
-      const subPages = subtemaMap.get(subtema)!;
-      subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-      return { name: subtema, pages: subPages };
-    });
+    const subtemas: SubtemaGroup[] = sortedSubtemas(subtemaMap).map(
+      (subtema) => {
+        const subPages = subtemaMap.get(subtema)!;
+        subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
+        return { name: subtema, pages: subPages };
+      }
+    );
 
     return {
       name: tema,
