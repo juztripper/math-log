@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { syncFromNotion, SyncProgress } from "@/lib/sync";
-import { CACHE_TAG } from "@/lib/notion";
+import { invalidateMemoryCache } from "@/lib/notion";
 import { timingSafeEqual } from "crypto";
 
 function invalidateSiteCaches() {
-  revalidateTag(CACHE_TAG);
+  invalidateMemoryCache();
   revalidatePath("/", "layout");
 }
 

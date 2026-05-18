@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchDatabasePages } from "@/lib/notion";
+import { fetchDatabasePages, sortedSubtemas, sortedTemas } from "@/lib/notion";
 import {
   SLUG_TO_ANO,
   ANO_DB,
@@ -24,29 +24,26 @@ function buildThemes(pages: ContentPage[]): ThemeGroup[] {
     sub.get(subtema)!.push(page);
   }
 
-  const themes: ThemeGroup[] = [];
-  Array.from(themeMap.keys()).forEach((tema) => {
+  return sortedTemas(themeMap).map((tema) => {
     const subtemaMap = themeMap.get(tema)!;
 
-    const subtemas: SubtemaGroup[] = [];
-    Array.from(subtemaMap.keys()).forEach((subtema) => {
-      const pages = subtemaMap.get(subtema)!;
-      pages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-      subtemas.push({ name: subtema, pages });
-    });
+    const subtemas: SubtemaGroup[] = sortedSubtemas(subtemaMap).map(
+      (subtema) => {
+        const pages = subtemaMap.get(subtema)!;
+        pages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
+        return { name: subtema, pages };
+      }
+    );
 
-    themes.push({
+    return {
       name: tema,
       color: THEME_COLORS[tema] || "#6b7280",
       subtemas,
-    });
+    };
   });
-  return themes;
 }
 
-export function generateStaticParams() {
-  return [{ ano: "10-ano" }, { ano: "11-ano" }];
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

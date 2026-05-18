@@ -1,6 +1,5 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
-import { unstable_cache } from "next/cache";
 import { list } from "@vercel/blob";
 import {
   ContentPage,
@@ -17,6 +16,7 @@ const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json")
 const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
 
 const isVercel = !!process.env.VERCEL;
+const MEM_TTL_MS = 30_000;
 
 export const CACHE_TAG = "notion-cache";
 
@@ -27,6 +27,41 @@ export function slugify(text: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function minOrdem(pages: Pick<ContentPage, "ordem">[]): number {
+  let min = Number.POSITIVE_INFINITY;
+  for (const p of pages) {
+    const o = p.ordem;
+    if (o != null && o < min) min = o;
+  }
+  return min;
+}
+
+export function sortedTemas(
+  themeMap: Map<string, Map<string, Pick<ContentPage, "ordem">[]>>
+): string[] {
+  return Array.from(themeMap.entries())
+    .map(([tema, subMap]) => {
+      const all: Pick<ContentPage, "ordem">[] = [];
+      for (const pages of subMap.values()) all.push(...pages);
+      return { tema, min: minOrdem(all) };
+    })
+    .sort((a, b) =>
+      a.min !== b.min ? a.min - b.min : a.tema.localeCompare(b.tema, "pt")
+    )
+    .map((x) => x.tema);
+}
+
+export function sortedSubtemas(
+  subMap: Map<string, Pick<ContentPage, "ordem">[]>
+): string[] {
+  return Array.from(subMap.entries())
+    .map(([subtema, pages]) => ({ subtema, min: minOrdem(pages) }))
+    .sort((a, b) =>
+      a.min !== b.min ? a.min - b.min : a.subtema.localeCompare(b.subtema, "pt")
+    )
+    .map((x) => x.subtema);
 }
 
 // ─── Read from cache ──────────────────────────────
@@ -51,30 +86,57 @@ async function readFromBlob(): Promise<CacheData | null> {
   try {
     const { blobs } = await list({ prefix: CACHE_BLOB_PATH, limit: 1 });
     const match = blobs.find((b) => b.pathname === CACHE_BLOB_PATH);
-    if (!match) return null;
+    if (!match) {
+      console.warn("[notion] Blob 'cache.json' not found via list()");
+      return null;
+    }
     const res = await fetch(match.url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as CacheData;
+    if (!res.ok) {
+      console.warn(`[notion] Blob fetch returned ${res.status}`);
+      return null;
+    }
+    const data = (await res.json()) as CacheData;
+    console.log(
+      `[notion] Loaded cache from Blob: lastSync=${data.lastSync}, ` +
+        `10=${data.databases["10"]?.length ?? 0}, 11=${data.databases["11"]?.length ?? 0}`
+    );
+    return data;
   } catch (err) {
     console.warn("[notion] Blob fetch failed:", err);
     return null;
   }
 }
 
-const readCacheCached = unstable_cache(
-  async (): Promise<CacheData | null> => {
-    if (isVercel) {
-      const blobData = await readFromBlob();
-      if (blobData) return blobData;
-    }
-    return readFromFilesystem();
-  },
-  ["notion-cache-v1"],
-  { tags: [CACHE_TAG], revalidate: 3600 }
-);
+let memCache: { data: CacheData; ts: number } | null = null;
+let inflight: Promise<CacheData | null> | null = null;
+
+export function invalidateMemoryCache() {
+  memCache = null;
+}
+
+async function loadCacheFresh(): Promise<CacheData | null> {
+  if (isVercel) {
+    const blobData = await readFromBlob();
+    if (blobData) return blobData;
+    console.warn("[notion] Falling back to bundled filesystem cache");
+  }
+  return readFromFilesystem();
+}
 
 async function readCache(): Promise<CacheData | null> {
-  return readCacheCached();
+  if (memCache && Date.now() - memCache.ts < MEM_TTL_MS) {
+    return memCache.data;
+  }
+  if (inflight) return inflight;
+  inflight = loadCacheFresh()
+    .then((data) => {
+      if (data) memCache = { data, ts: Date.now() };
+      return data;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
 
 export async function fetchDatabasePages(
@@ -111,12 +173,14 @@ export async function fetchPageBySlug(
   }
 
   const ordered: typeof pages = [];
-  Array.from(themeMap.values()).forEach((subtemaMap) => {
-    Array.from(subtemaMap.values()).forEach((subPages) => {
+  for (const tema of sortedTemas(themeMap)) {
+    const subtemaMap = themeMap.get(tema)!;
+    for (const subtema of sortedSubtemas(subtemaMap)) {
+      const subPages = subtemaMap.get(subtema)!;
       subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
       ordered.push(...subPages);
-    });
-  });
+    }
+  }
 
   const idx = ordered.findIndex((p) => p.slug === slug);
   if (idx === -1) return null;
@@ -146,17 +210,10 @@ export async function fetchAllYearData(): Promise<YearData[]> {
     fetchDatabasePages("11"),
   ]);
 
-  return [
-    buildYearData("10º Ano", "10", pages10),
-    buildYearData("11º Ano", "11", pages11),
-  ];
+  return [buildYearData("10º Ano", pages10), buildYearData("11º Ano", pages11)];
 }
 
-function buildYearData(
-  ano: string,
-  dbKey: string,
-  pages: ContentPage[]
-): YearData {
+function buildYearData(ano: string, pages: ContentPage[]): YearData {
   const themeMap = new Map<string, Map<string, ContentPage[]>>();
 
   for (const page of pages) {
@@ -169,22 +226,22 @@ function buildYearData(
     subtemaMap.get(subtema)!.push(page);
   }
 
-  const themes: ThemeGroup[] = [];
-  Array.from(themeMap.keys()).forEach((tema) => {
+  const themes: ThemeGroup[] = sortedTemas(themeMap).map((tema) => {
     const subtemaMap = themeMap.get(tema)!;
 
-    const subtemas: SubtemaGroup[] = [];
-    Array.from(subtemaMap.keys()).forEach((subtema) => {
-      const subPages = subtemaMap.get(subtema)!;
-      subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-      subtemas.push({ name: subtema, pages: subPages });
-    });
+    const subtemas: SubtemaGroup[] = sortedSubtemas(subtemaMap).map(
+      (subtema) => {
+        const subPages = subtemaMap.get(subtema)!;
+        subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
+        return { name: subtema, pages: subPages };
+      }
+    );
 
-    themes.push({
+    return {
       name: tema,
       color: THEME_COLORS[tema] || "#6b7280",
       subtemas,
-    });
+    };
   });
 
   return {
