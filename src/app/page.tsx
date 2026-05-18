@@ -2,8 +2,8 @@ import Link from "next/link";
 import { fetchAllYearData } from "@/lib/notion";
 import { THEME_COLORS } from "@/lib/types";
 
-export default function HomePage() {
-  const years = fetchAllYearData();
+export default async function HomePage() {
+  const years = await fetchAllYearData();
 
   return (
     <>

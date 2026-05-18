@@ -72,7 +72,7 @@ export default async function YearPage({
   const dbKey = ANO_DB[ano] as "10" | "11";
   if (!label || !dbKey) notFound();
 
-  const pages = fetchDatabasePages(dbKey);
+  const pages = await fetchDatabasePages(dbKey);
   const themes = buildThemes(pages);
 
   return (
