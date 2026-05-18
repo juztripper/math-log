@@ -8,6 +8,8 @@ import {
   SubtemaGroup,
   THEME_COLORS,
   ANO_SLUGS,
+  THEME_ORDER,
+  SUBTEMA_ORDER,
 } from "./types";
 import type { CacheData } from "./sync";
 import { CACHE_BLOB_PATH } from "./sync";
@@ -27,6 +29,26 @@ export function slugify(text: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function indexIn(arr: readonly string[] | undefined, name: string): number {
+  if (!arr) return Number.POSITIVE_INFINITY;
+  const i = arr.indexOf(name);
+  return i === -1 ? Number.POSITIVE_INFINITY : i;
+}
+
+export function compareTema(dbKey: string, a: string, b: string): number {
+  const order = THEME_ORDER[dbKey];
+  const ia = indexIn(order, a);
+  const ib = indexIn(order, b);
+  return ia !== ib ? ia - ib : a.localeCompare(b, "pt");
+}
+
+export function compareSubtema(dbKey: string, a: string, b: string): number {
+  const order = SUBTEMA_ORDER[dbKey];
+  const ia = indexIn(order, a);
+  const ib = indexIn(order, b);
+  return ia !== ib ? ia - ib : a.localeCompare(b, "pt");
 }
 
 // ─── Read from cache ──────────────────────────────
@@ -138,12 +160,20 @@ export async function fetchPageBySlug(
   }
 
   const ordered: typeof pages = [];
-  Array.from(themeMap.values()).forEach((subtemaMap) => {
-    Array.from(subtemaMap.values()).forEach((subPages) => {
+  const orderedTemas = Array.from(themeMap.keys()).sort((a, b) =>
+    compareTema(dbKey, a, b)
+  );
+  for (const tema of orderedTemas) {
+    const subtemaMap = themeMap.get(tema)!;
+    const orderedSubs = Array.from(subtemaMap.keys()).sort((a, b) =>
+      compareSubtema(dbKey, a, b)
+    );
+    for (const subtema of orderedSubs) {
+      const subPages = subtemaMap.get(subtema)!;
       subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
       ordered.push(...subPages);
-    });
-  });
+    }
+  }
 
   const idx = ordered.findIndex((p) => p.slug === slug);
   if (idx === -1) return null;
@@ -196,22 +226,27 @@ function buildYearData(
     subtemaMap.get(subtema)!.push(page);
   }
 
-  const themes: ThemeGroup[] = [];
-  Array.from(themeMap.keys()).forEach((tema) => {
-    const subtemaMap = themeMap.get(tema)!;
+  const orderedTemas = Array.from(themeMap.keys()).sort((a, b) =>
+    compareTema(dbKey, a, b)
+  );
 
-    const subtemas: SubtemaGroup[] = [];
-    Array.from(subtemaMap.keys()).forEach((subtema) => {
+  const themes: ThemeGroup[] = orderedTemas.map((tema) => {
+    const subtemaMap = themeMap.get(tema)!;
+    const orderedSubs = Array.from(subtemaMap.keys()).sort((a, b) =>
+      compareSubtema(dbKey, a, b)
+    );
+
+    const subtemas: SubtemaGroup[] = orderedSubs.map((subtema) => {
       const subPages = subtemaMap.get(subtema)!;
       subPages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-      subtemas.push({ name: subtema, pages: subPages });
+      return { name: subtema, pages: subPages };
     });
 
-    themes.push({
+    return {
       name: tema,
       color: THEME_COLORS[tema] || "#6b7280",
       subtemas,
-    });
+    };
   });
 
   return {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchDatabasePages } from "@/lib/notion";
+import { compareSubtema, compareTema, fetchDatabasePages } from "@/lib/notion";
 import {
   SLUG_TO_ANO,
   ANO_DB,
@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import ThemeAccordion from "@/components/ThemeCard";
 
-function buildThemes(pages: ContentPage[]): ThemeGroup[] {
+function buildThemes(dbKey: string, pages: ContentPage[]): ThemeGroup[] {
   const themeMap = new Map<string, Map<string, ContentPage[]>>();
 
   for (const page of pages) {
@@ -24,24 +24,28 @@ function buildThemes(pages: ContentPage[]): ThemeGroup[] {
     sub.get(subtema)!.push(page);
   }
 
-  const themes: ThemeGroup[] = [];
-  Array.from(themeMap.keys()).forEach((tema) => {
-    const subtemaMap = themeMap.get(tema)!;
+  const orderedTemas = Array.from(themeMap.keys()).sort((a, b) =>
+    compareTema(dbKey, a, b)
+  );
 
-    const subtemas: SubtemaGroup[] = [];
-    Array.from(subtemaMap.keys()).forEach((subtema) => {
+  return orderedTemas.map((tema) => {
+    const subtemaMap = themeMap.get(tema)!;
+    const orderedSubs = Array.from(subtemaMap.keys()).sort((a, b) =>
+      compareSubtema(dbKey, a, b)
+    );
+
+    const subtemas: SubtemaGroup[] = orderedSubs.map((subtema) => {
       const pages = subtemaMap.get(subtema)!;
       pages.sort((a, b) => (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-      subtemas.push({ name: subtema, pages });
+      return { name: subtema, pages };
     });
 
-    themes.push({
+    return {
       name: tema,
       color: THEME_COLORS[tema] || "#6b7280",
       subtemas,
-    });
+    };
   });
-  return themes;
 }
 
 export const dynamic = "force-dynamic";
@@ -71,7 +75,7 @@ export default async function YearPage({
   if (!label || !dbKey) notFound();
 
   const pages = await fetchDatabasePages(dbKey);
-  const themes = buildThemes(pages);
+  const themes = buildThemes(dbKey, pages);
 
   return (
     <div className="year-page">
