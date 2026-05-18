@@ -7,9 +7,9 @@ import ContentBar from "@/components/ContentBar";
 
 export const dynamicParams = true;
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   try {
-    const slugs = getAllSlugs();
+    const slugs = await getAllSlugs();
     return slugs.map(({ ano, slug }) => ({ ano, slug }));
   } catch {
     return [];
@@ -26,7 +26,7 @@ export async function generateMetadata({
   const dbKey = ANO_DB[ano] as "10" | "11";
   if (!label || !dbKey) return { title: "Não encontrado" };
 
-  const data = fetchPageBySlug(dbKey, slug);
+  const data = await fetchPageBySlug(dbKey, slug);
   if (!data) return { title: "Não encontrado" };
 
   return {
@@ -45,7 +45,7 @@ export default async function ContentPageRoute({
   const dbKey = ANO_DB[ano] as "10" | "11";
   if (!label || !dbKey) notFound();
 
-  const data = fetchPageBySlug(dbKey, slug);
+  const data = await fetchPageBySlug(dbKey, slug);
   if (!data) notFound();
 
   const { page, blocks, nav } = data;

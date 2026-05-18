@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { syncFromNotion, SyncProgress } from "@/lib/sync";
+import { CACHE_TAG } from "@/lib/notion";
 import { timingSafeEqual } from "crypto";
+
+function invalidateSiteCaches() {
+  revalidateTag(CACHE_TAG);
+  revalidatePath("/", "layout");
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -53,6 +60,7 @@ export async function POST(request: NextRequest) {
     // Fallback: non-streaming response
     try {
       const cache = await syncFromNotion();
+      invalidateSiteCaches();
       const total =
         cache.databases["10"].length + cache.databases["11"].length;
       return NextResponse.json({
@@ -82,6 +90,7 @@ export async function POST(request: NextRequest) {
 
       syncFromNotion(send)
         .then((cache) => {
+          invalidateSiteCaches();
           send({
             phase: "done",
             message: `Concluído: ${cache.databases["10"].length} págs (10.º) + ${cache.databases["11"].length} págs (11.º)`,

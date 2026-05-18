@@ -1,5 +1,7 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
+import { unstable_cache } from "next/cache";
+import { list } from "@vercel/blob";
 import {
   ContentPage,
   YearData,
@@ -9,23 +11,30 @@ import {
   ANO_SLUGS,
 } from "./types";
 import type { CacheData } from "./sync";
+import { CACHE_BLOB_PATH } from "./sync";
 
 const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
 const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
+
+const isVercel = !!process.env.VERCEL;
+
+export const CACHE_TAG = "notion-cache";
 
 export function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
 
 // ─── Read from cache ──────────────────────────────
-// Prefer runtime cache (/tmp/, written by admin sync) over bundled cache
+// On Vercel: fetch from Vercel Blob (shared across function instances).
+// Locally / at build: read from bundled or /tmp filesystem.
+// Cached via unstable_cache; invalidated by revalidateTag(CACHE_TAG) after sync.
 
-function readCache(): CacheData | null {
+function readFromFilesystem(): CacheData | null {
   for (const cachePath of [RUNTIME_CACHE_PATH, BUNDLED_CACHE_PATH]) {
     if (!existsSync(cachePath)) continue;
     try {
@@ -38,8 +47,40 @@ function readCache(): CacheData | null {
   return null;
 }
 
-export function fetchDatabasePages(dbKey: "10" | "11"): ContentPage[] {
-  const cache = readCache();
+async function readFromBlob(): Promise<CacheData | null> {
+  try {
+    const { blobs } = await list({ prefix: CACHE_BLOB_PATH, limit: 1 });
+    const match = blobs.find((b) => b.pathname === CACHE_BLOB_PATH);
+    if (!match) return null;
+    const res = await fetch(match.url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as CacheData;
+  } catch (err) {
+    console.warn("[notion] Blob fetch failed:", err);
+    return null;
+  }
+}
+
+const readCacheCached = unstable_cache(
+  async (): Promise<CacheData | null> => {
+    if (isVercel) {
+      const blobData = await readFromBlob();
+      if (blobData) return blobData;
+    }
+    return readFromFilesystem();
+  },
+  ["notion-cache-v1"],
+  { tags: [CACHE_TAG], revalidate: 3600 }
+);
+
+async function readCache(): Promise<CacheData | null> {
+  return readCacheCached();
+}
+
+export async function fetchDatabasePages(
+  dbKey: "10" | "11"
+): Promise<ContentPage[]> {
+  const cache = await readCache();
   if (!cache) return [];
   const pages = cache.databases[dbKey] || [];
   return pages.map(({ blocks, ...rest }) => rest);
@@ -50,11 +91,11 @@ export interface PageNav {
   next: { title: string; icon: string; slug: string; subtema: string } | null;
 }
 
-export function fetchPageBySlug(
+export async function fetchPageBySlug(
   dbKey: "10" | "11",
   slug: string
-): { page: ContentPage; blocks: any[]; nav: PageNav } | null {
-  const cache = readCache();
+): Promise<{ page: ContentPage; blocks: any[]; nav: PageNav } | null> {
+  const cache = await readCache();
   if (!cache) return null;
   const pages = cache.databases[dbKey] || [];
 
@@ -99,9 +140,11 @@ export function fetchPageBySlug(
   };
 }
 
-export function fetchAllYearData(): YearData[] {
-  const pages10 = fetchDatabasePages("10");
-  const pages11 = fetchDatabasePages("11");
+export async function fetchAllYearData(): Promise<YearData[]> {
+  const [pages10, pages11] = await Promise.all([
+    fetchDatabasePages("10"),
+    fetchDatabasePages("11"),
+  ]);
 
   return [
     buildYearData("10º Ano", "10", pages10),
@@ -152,9 +195,16 @@ function buildYearData(
   };
 }
 
-export function getAllSlugs(): { ano: string; slug: string }[] {
-  const pages10 = fetchDatabasePages("10");
-  const pages11 = fetchDatabasePages("11");
+export async function getLastSync(): Promise<string | null> {
+  const cache = await readCache();
+  return cache?.lastSync ?? null;
+}
+
+export async function getAllSlugs(): Promise<{ ano: string; slug: string }[]> {
+  const [pages10, pages11] = await Promise.all([
+    fetchDatabasePages("10"),
+    fetchDatabasePages("11"),
+  ]);
 
   const slugs: { ano: string; slug: string }[] = [];
   for (const page of pages10) {

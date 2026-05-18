@@ -1,13 +1,17 @@
 import { Client } from "@notionhq/client";
+import { put } from "@vercel/blob";
 import { writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 
 const BUNDLED_CACHE_PATH = path.join(process.cwd(), "src", "data", "cache.json");
 const RUNTIME_CACHE_PATH = path.join("/tmp", "cache.json");
 
-// On Vercel, write to /tmp/ (writable). Locally, write to src/data/.
+// On Vercel, write to /tmp/ (writable) AND upload to Blob (shared across instances).
+// Locally, write to src/data/.
 const isVercel = !!process.env.VERCEL;
 const CACHE_PATH = isVercel ? RUNTIME_CACHE_PATH : BUNDLED_CACHE_PATH;
+
+export const CACHE_BLOB_PATH = "cache.json";
 
 interface CachedPage {
   id: string;
@@ -239,7 +243,19 @@ export async function syncFromNotion(
   const dir = path.dirname(CACHE_PATH);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
-  writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2), "utf-8");
+  const serialized = JSON.stringify(cache, null, 2);
+  writeFileSync(CACHE_PATH, serialized, "utf-8");
+
+  if (isVercel) {
+    emit({ phase: "saving", message: "A enviar cache para Vercel Blob..." });
+    await put(CACHE_BLOB_PATH, serialized, {
+      access: "public",
+      contentType: "application/json",
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      cacheControlMaxAge: 0,
+    });
+  }
 
   emit({
     phase: "done",
