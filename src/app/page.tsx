@@ -61,7 +61,7 @@ export default async function HomePage() {
       <section className="sources">
         <div className="sources-label">Fontes consultadas</div>
         <p className="sources-text">
-          Domínio 10 (Vol. 1, 2 e 3) · Espiral 11 (Vol. 1 e 2)
+          Domínio 10 (Vol. 1, 2 e 3) · Espiral 11 (Vol. 1, 2 e 3)
         </p>
         <p className="sources-text">
           <a

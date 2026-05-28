@@ -52,6 +52,8 @@ export const THEME_ICONS: Record<string, string> = {
   "Produto Escalar": "↗️",
   "Sucessões Progressões Aritméticas e Geométricas": "🔢",
   "Contagem": "🧮",
+  "Funções Polinomiais e Racionais": "〰️",
+  "Cálculo Diferencial": "⚡",
 };
 
 export const ANO_SLUGS: Record<string, string> = {
